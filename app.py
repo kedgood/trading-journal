@@ -1,37 +1,25 @@
 import streamlit as st
-import gspread
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
 # --- ตั้งค่าหน้าเว็บแอปพลิเคชัน ---
 st.set_page_config(page_title="Trade Journal Dashboard", layout="centered")
 st.title("📊 My Trading Journal")
-st.subheader("ระบบบันทึกประวัติการเทรด (เสถียรและปลอดภัย)")
+st.subheader("ระบบบันทึกประวัติการเทรดอัตโนมัติ")
 st.markdown("---")
 
-# ฟังก์ชันสำหรับบันทึกข้อมูล
-def save_to_google_sheets(date_val, pair_val, side_val, pnl_val, screenshot_val):
-    try:
-        # ดึงค่าสิทธิ์การเข้าถึงจาก Streamlit Secrets 
-        # (ระบบจะเปลี่ยน Service Account ของ Google ให้ล็อกอินอัตโนมัติ)
-        creds_dict = st.secrets["gcp_service_account"]
-        
-        # ทำการล็อกอินเข้าสู่ Google Sheets
-        client = gspread.service_account_from_dict(creds_dict)
-        
-        # เปิดไฟล์ Google Sheets ผ่านลิงก์ของคุณโดยตรง
-        sheet_url = "https://docs.google.com/spreadsheets/d/1jXnDcJUUxQ2yLUUNlJe7jWg__lErKtIBkRXrQA7hb8U/edit?usp=sharing"
-        sheet = client.open_by_url(sheet_url).sheet1
-        
-        # จัดเรียงข้อมูลให้ตรงกับตารางหัวข้อของคุณพอดี (Date, Pair, Buy/Sell, PnL, Screenshot)
-        row_to_insert = [date_val, pair_val, side_val, pnl_val, screenshot_val]
-        
-        # เพิ่มข้อมูลแถวใหม่ล่างสุด
-        sheet.append_row(row_to_insert)
-        return True
-    except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาดหลังบ้าน: {e}")
-        return False
+# ดึงลิงก์จากระบบ Secrets มาใช้งาน
+sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+
+# เปิดการเชื่อมต่อด้วยปลั๊กอินของ Streamlit
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# อ่านข้อมูลเก่าขึ้นมาเตรียมพร้อมอัปเดต
+try:
+    existing_data = conn.read(spreadsheet=sheet_url)
+except Exception:
+    existing_data = pd.DataFrame(columns=["Date", "Pair", "Buy/Sell", "PnL", "Screenshot"])
 
 # --- ฟอร์มกรอกข้อมูลหน้าเว็บ UI ---
 col1, col2 = st.columns(2)
@@ -50,21 +38,26 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("บันทึกข้อมูล (Save Trade)", use_container_width=True):
     if pair_input:
         with st.spinner("กำลังบันทึกข้อมูลลงตาราง..."):
-            # เปลี่ยนข้อมูลวันที่ให้เป็นตัวหนังสือ (ปี-เดือน-วัน)
-            formatted_date = trade_date.strftime("%Y-%m-%d")
             
-            # บันทึกข้อมูล (หากไม่มีการกรอกช่องรูปภาพ ระบบจะส่งค่าเป็นช่องว่างให้โดยไม่ออก Error)
-            img_link = screenshot_input.strip() if screenshot_input else ""
+            # 1. จัดเตรียมข้อมูลใหม่
+            new_row = pd.DataFrame([{
+                "Date": trade_date.strftime("%Y-%m-%d"),
+                "Pair": pair_input.upper().strip(),
+                "Buy/Sell": side_input,
+                "PnL": pnl_input,
+                "Screenshot": screenshot_input.strip() if screenshot_input else ""
+            }])
             
-            success = save_to_google_sheets(
-                formatted_date, 
-                pair_input.upper().strip(), 
-                side_input, 
-                pnl_input, 
-                img_link
-            )
+            # 2. รวมข้อมูลใหม่ต่อท้ายข้อมูลเดิม
+            updated_df = pd.concat([existing_data, new_row], ignore_index=True)
             
-            if success:
-                st.success(f"🎉 บันทึกออเดอร์คู่ {pair_input.upper()} ลง Google Sheets สำเร็จแล้ว!")
+            try:
+                # 3. อัปเดตข้อมูลกลับเข้า Google Sheets
+                conn.update(spreadsheet=sheet_url, data=updated_df)
+                st.success(f"🎉 บันทึกออเดอร์คู่ {pair_input.upper()} เรียบร้อยแล้ว!")
+                st.balloons() # แสดงเอฟเฟกต์ลูกโป่งฉลองความสำเร็จ
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการเขียนข้อมูล: {e}")
+                st.info("💡 คำแนะนำ: ตรวจสอบว่าใน Google Sheets ได้กดปุ่มแชร์ขวาบน และตั้งค่าให้ 'ทุกคนที่มีลิงก์' เป็น 'ผู้แก้ไข (Editor)' แล้วหรือยัง")
     else:
         st.warning("⚠️ กรุณาระบุชื่อคู่เงินหรือสินทรัพย์ (Pair) ก่อนกดบันทึก")
