@@ -1,5 +1,5 @@
 import streamlit as st
-import gspread
+
 
 st.title("My Trading Journal")
 
