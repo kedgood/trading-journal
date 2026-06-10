@@ -156,10 +156,10 @@ with tab2:
                 "Risk/Reward": st.column_config.TextColumn("R:R"),
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
                 "Result": st.column_config.TextColumn("ผลลัพธ์"),
-                "Entry_Screenshot": st.column_config.LinkColumn("ลิงก์รูปเข้า"),
-                "Exit_Screenshot": st.column_config.LinkColumn("ลิงก์รูปจบ"),
                 "ภาพตอนเข้า (Entry)": st.column_config.ImageColumn("📸 ภาพตอนเข้า"),
                 "ภาพตอนจบ (Exit)": st.column_config.ImageColumn("🏁 ภาพตอนจบ"),
+                "Entry_Screenshot": st.column_config.LinkColumn("ลิงก์รูปเข้า"),
+                "Exit_Screenshot": st.column_config.LinkColumn("ลิงก์รูปจบ"),
                 "Note": st.column_config.TextColumn("บันทึกเพิ่มเติม")
             },
             use_container_width=True,
