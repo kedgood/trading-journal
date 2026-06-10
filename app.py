@@ -1,63 +1,103 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
+import gspread
 import pandas as pd
 from datetime import datetime
 
 # --- ตั้งค่าหน้าเว็บแอปพลิเคชัน ---
-st.set_page_config(page_title="Trade Journal Dashboard", layout="centered")
-st.title("📊 My Trading Journal")
-st.subheader("ระบบบันทึกประวัติการเทรดอัตโนมัติ")
+st.set_page_config(page_title="Trade Journal Dashboard", layout="wide")
+st.title("📊 My Trading Journal Dashboard")
 st.markdown("---")
 
-# ดึงลิงก์จากระบบ Secrets มาใช้งาน
-sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+# ลิงก์ Google Sheets ของคุณ
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1jXnDcJUUxQ2yLUUNlJe7jWg__lErKtIBkRXrQA7hb8U/edit?usp=sharing"
 
-# เปิดการเชื่อมต่อด้วยปลั๊กอินของ Streamlit
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ฟังก์ชันเชื่อมต่อ Google Sheets หลังบ้านด้วยระบบคีย์ลับ
+def get_google_sheet():
+    try:
+        creds_dict = st.secrets["gcp_service_account"]
+        client = gspread.service_account_from_dict(creds_dict)
+        sheet = client.open_by_url(SHEET_URL).sheet1
+        return sheet
+    except Exception as e:
+        st.error(f"ไม่สามารถเชื่อมต่อ Google Sheets ได้: {e}")
+        return None
 
-# อ่านข้อมูลเก่าขึ้นมาเตรียมพร้อมอัปเดต
-try:
-    existing_data = conn.read(spreadsheet=sheet_url)
-except Exception:
-    existing_data = pd.DataFrame(columns=["Date", "Pair", "Buy/Sell", "PnL", "Screenshot"])
+# ฟังก์ชันดึงข้อมูลจากชีตมาแสดงเป็นตาราง
+def load_data():
+    sheet = get_google_sheet()
+    if sheet:
+        data = sheet.get_all_records()
+        if data:
+            return pd.DataFrame(data)
+    return pd.DataFrame(columns=["Date", "Pair", "Buy/Sell", "PnL", "Screenshot"])
 
-# --- ฟอร์มกรอกข้อมูลหน้าเว็บ UI ---
-col1, col2 = st.columns(2)
-with col1:
-    trade_date = st.date_input("📅 Date", datetime.now().date())
-    side_input = st.selectbox("↕️ Buy/Sell", ["Buy", "Sell"])
-with col2:
-    pair_input = st.text_input("💱 Pair", placeholder="เช่น XAUUSD, EURUSD")
-    pnl_input = st.number_input("💵 PnL (Profit/Loss)", value=0.0, step=0.01, format="%.2f")
+# --- สร้างแท็บเมนูการใช้งาน 3 แท็บ ---
+tab1, tab2, tab3 = st.tabs(["📥 กรอกข้อมูลการเทรด", "📜 สมุดบันทึกประวัติทั้งหมด", "🔍 ค้นหาและคัดกรอง"])
 
-screenshot_input = st.text_input("🖼️ Screenshot URL", placeholder="วางลิงก์รูปภาพกราฟเทรด (ไม่มีให้เว้นว่างได้)")
+# ================= TAB 1: กรอกข้อมูล =================
+with tab1:
+    st.header("บันทึกออเดอร์ใหม่")
+    col1, col2 = st.columns(2)
+    with col1:
+        trade_date = st.date_input("📅 วันที่", datetime.now().date())
+        side_input = st.selectbox("↕️ ฝั่งออเดอร์", ["Buy", "Sell"])
+    with col2:
+        pair_input = st.text_input("💱 คู่เงิน / สินทรัพย์", placeholder="เช่น XAUUSD, EURUSD")
+        pnl_input = st.number_input("💵 กำไร / ขาดทุน (PnL)", value=0.0, step=0.01, format="%.2f")
+    
+    screenshot_input = st.text_input("🖼️ ลิงก์รูปภาพบันทึกกราฟ (Screenshot URL)", placeholder="วางลิงก์รูปภาพ (ถ้ามี)")
+    
+    if st.button("บันทึกข้อมูล (Save)", use_container_width=True):
+        if pair_input:
+            sheet = get_google_sheet()
+            if sheet:
+                with st.spinner("กำลังบันทึกข้อมูลลงตาราง..."):
+                    formatted_date = trade_date.strftime("%Y-%m-%d")
+                    new_row = [formatted_date, pair_input.upper().strip(), side_input, pnl_input, screenshot_input.strip()]
+                    sheet.append_row(new_row)
+                    st.success(f"🎉 บันทึกคู่ {pair_input.upper()} ลง Google Sheets เรียบร้อยแล้ว!")
+                    st.rerun()
+        else:
+            st.warning("⚠️ กรุณากรอกชื่อคู่เงินก่อนกดปุ่มบันทึก")
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ปุ่มกดบันทึก
-if st.button("บันทึกข้อมูล (Save Trade)", use_container_width=True):
-    if pair_input:
-        with st.spinner("กำลังบันทึกข้อมูลลงตาราง..."):
-            
-            # 1. จัดเตรียมข้อมูลใหม่
-            new_row = pd.DataFrame([{
-                "Date": trade_date.strftime("%Y-%m-%d"),
-                "Pair": pair_input.upper().strip(),
-                "Buy/Sell": side_input,
-                "PnL": pnl_input,
-                "Screenshot": screenshot_input.strip() if screenshot_input else ""
-            }])
-            
-            # 2. รวมข้อมูลใหม่ต่อท้ายข้อมูลเดิม
-            updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-            
-            try:
-                # 3. อัปเดตข้อมูลกลับเข้า Google Sheets
-                conn.update(spreadsheet=sheet_url, data=updated_df)
-                st.success(f"🎉 บันทึกออเดอร์คู่ {pair_input.upper()} เรียบร้อยแล้ว!")
-                st.balloons() # แสดงเอฟเฟกต์ลูกโป่งฉลองความสำเร็จ
-            except Exception as e:
-                st.error(f"เกิดข้อผิดพลาดในการเขียนข้อมูล: {e}")
-                st.info("💡 คำแนะนำ: ตรวจสอบว่าใน Google Sheets ได้กดปุ่มแชร์ขวาบน และตั้งค่าให้ 'ทุกคนที่มีลิงก์' เป็น 'ผู้แก้ไข (Editor)' แล้วหรือยัง")
+# ================= TAB 2: แสดงข้อมูลทั้งหมด =================
+with tab2:
+    st.header("ประวัติการเทรดในสมุดบันทึก")
+    df = load_data()
+    
+    if not df.empty:
+        total_trades = len(df)
+        total_pnl = df["PnL"].astype(float).sum()
+        
+        c1, c2 = st.columns(2)
+        c1.metric("จำนวนออเดอร์สะสม", f"{total_trades} ไม้")
+        c2.metric("กำไร/ขาดทุนสุทธิ", f"${total_pnl:,.2f}", delta=f"{total_pnl:,.2f}")
+        
+        st.markdown("### ตารางบันทึกข้อมูล")
+        st.dataframe(df, use_container_width=True)
     else:
-        st.warning("⚠️ กรุณาระบุชื่อคู่เงินหรือสินทรัพย์ (Pair) ก่อนกดบันทึก")
+        st.info("ยังไม่มีประวัติการเทรดในระบบตารางของคุณ")
+
+# ================= TAB 3: ค้นหาข้อมูล =================
+with tab3:
+    st.header("ค้นหาและคัดกรองข้อมูลประวัติ")
+    df = load_data()
+    
+    if not df.empty:
+        search_col1, search_col2 = st.columns(2)
+        with search_col1:
+            unique_pairs = ["ทั้งหมด"] + sorted(df["Pair"].unique().tolist())
+            select_pair = st.selectbox("เลือกกรองตามชื่อคู่เงิน", unique_pairs)
+        with search_col2:
+            select_side = st.selectbox("เลือกกรองตามฝั่ง Buy หรือ Sell", ["ทั้งหมด", "Buy", "Sell"])
+            
+        filtered_df = df.copy()
+        if select_pair != "ทั้งหมด":
+            filtered_df = filtered_df[filtered_df["Pair"] == select_pair]
+        if select_side != "ทั้งหมด":
+            filtered_df = filtered_df[filtered_df["Buy/Sell"] == select_side]
+            
+        st.markdown(f"🔍 ค้นพบข้อมูลทั้งหมด **{len(filtered_df)}** รายการ")
+        st.dataframe(filtered_df, use_container_width=True)
+    else:
+        st.info("ยังไม่มีข้อมูลในสมุดบันทึกสำหรับการค้นหา")
