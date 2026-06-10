@@ -69,7 +69,8 @@ with tab1:
             entry_type_input = st.selectbox("📌 ประเภทการเข้าเทรด (Entry Type)", [
                 "ตามเทรนด์ขาขึ้น (Up-Trend)", 
                 "ตามเทรนด์ขาลง (Down-Trend)", 
-                "เล่นในกรอบ/กลับตัว (Sideway/Reversal)"
+                "เล่นในกรอบ (Sideway)",
+                "กลับตัว  (Reversal)"
             ])
             
         with col3:
