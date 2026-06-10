@@ -31,7 +31,7 @@ def load_data():
         data = sheet.get_all_records()
         if data:
             return pd.DataFrame(data)
-    return pd.DataFrame(columns=["Date", "Pair", "TimeFrame", "Buy/Sell", "LotSize", "Points", "Strategy", "Risk/Reward", "PnL", "Result", "Entry_Screenshot", "Exit_Screenshot", "Note"])
+    return pd.DataFrame(columns=["Date", "Pair", "TimeFrame", "Buy/Sell", "LotSize", "Points", "Strategy", "Risk/Reward", "PnL", "Result", "Entry_Screenshot", "Exit_Screenshot", "Entry_Type", "Note"])
 
 # --- สร้างแท็บเมนูการใช้งาน 4 แท็บ ---
 tab1, tab2, tab3, tab4 = st.tabs([
@@ -41,7 +41,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📈 กราฟแนวโน้มเงินทุน (Equity Curve)"
 ])
 
-# ================= TAB 1: กรอกข้อมูล (เวอร์ชันแยก Time Frame และ รูป Entry/Exit) =================
+# ================= TAB 1: กรอกข้อมูลเวอร์ชันสมบูรณ์ (สวยงามและครบถ้วนที่สุด) =================
 with tab1:
     st.header("🗂️ บันทึกรายละเอียดการเข้าเทรด (Trade Entry)")
     
@@ -57,7 +57,6 @@ with tab1:
             else:
                 pair_input = pair_selection
                 
-            # เพิ่มตัวเลือก Time Frame ยอดนิยม
             tf_input = st.selectbox("⏱️ หน้าเทรดใช้ Time Frame อะไร?", ["M1", "M5", "M15", "H1", "H4", "D1", "อื่นๆ"])
             side_input = st.selectbox("↕️ ฝั่งออเดอร์", ["Buy", "Sell"])
             
@@ -66,12 +65,19 @@ with tab1:
             points_input = st.number_input("🎯 จำนวนจุดที่ ชนะ/แพ้ (Points)", value=0, step=10)
             pnl_input = st.number_input("💵 กำไร / ขาดทุนสุทธิ (PnL $)", value=0.0, step=1.0, format="%.2f")
             
+            # เพิ่มช่องประเภทการเข้า เพื่อความสวยงามและแน่นขึ้นในคอลัมน์ที่ 2
+            entry_type_input = st.selectbox("📌 ประเภทการเข้าเทรด (Entry Type)", [
+                "ตามเทรนด์ขาขึ้น (Up-Trend)", 
+                "ตามเทรนด์ขาลง (Down-Trend)", 
+                "เล่นในกรอบ/กลับตัว (Sideway/Reversal)"
+            ])
+            
         with col3:
             strategy_input = st.selectbox("🧠 แผนระบบเทรด (Setup/Strategy)", 
                                           ["Price Action", "Fair Value Gap (FVG)", "Volume Profile (POC/HVN/LVN)", "Break of Structure (BOS)", "Indicator Sign", "อื่นๆ"])
             rr_input = st.selectbox("⚖️ Risk / Reward Ratio", ["1:1", "1:1.5", "1:2", "1:3", "มากกว่า 1:3", "ไม่ได้ตั้ง (No RR)"])
             
-            # แยกช่องวางลิงก์รูปเป็น 2 ช่อง
+            # ช่องวางลิงก์รูปภาพ Entry และ Exit
             entry_screenshot = st.text_input("📸 ลิงก์รูปภาพตอน 'เข้าออเดอร์' (Entry Link)", placeholder="วางลิงก์รูปกล้อง TradingView")
             exit_screenshot = st.text_input("🏁 ลิงก์รูปภาพตอน 'จบไม้' (Exit Link)", placeholder="วางลิงก์รูปกล้อง TradingView")
             
@@ -87,7 +93,7 @@ with tab1:
                         formatted_date = trade_date.strftime("%Y-%m-%d")
                         result_status = "Win" if pnl_input > 0 else ("Loss" if pnl_input < 0 else "Draft/Breakeven")
                         
-                        # เรียงแถวข้อมูลให้ตรงกับหัวข้อคอลัมน์ Google Sheets ใหม่ (13 คอลัมน์)
+                        # เรียงแถวข้อมูลให้ตรงกับหัวข้อคอลัมน์ Google Sheets ใหม่ทั้งหมด (14 คอลัมน์)
                         new_row = [
                             formatted_date, 
                             pair_input, 
@@ -101,15 +107,16 @@ with tab1:
                             result_status, 
                             entry_screenshot.strip(),
                             exit_screenshot.strip(),
+                            entry_type_input, # บันทึกประเภทการเข้าลงชีต
                             note_input.strip()
                         ]
                         sheet.append_row(new_row)
-                        st.success(f"🎉 บันทึกข้อมูลการเทรดคู่ {pair_input} ({tf_input}) สำเร็จแล้ว!")
+                        st.success(f"🎉 บันทึกข้อมูลการเทรดคู่ {pair_input} ({entry_type_input}) สำเร็จแล้ว!")
                         st.rerun()
             else:
                 st.warning("⚠️ กรุณาระบุชื่อคู่เงินก่อนกดบันทึก")
 
-# ================= TAB 2: สมุดบันทึกประวัติและสถิติรวม (พรีวิว 2 รูป) =================
+# ================= TAB 2: สมุดบันทึกประวัติและสถิติรวม =================
 with tab2:
     st.header("📊 หน้าสรุปผลงานและการวิเคราะห์ (Dashboard Analytics)")
     df = load_data()
@@ -130,7 +137,6 @@ with tab2:
         st.markdown("### 📜 ประวัติออเดอร์และการแสดงรูปภาพพรีวิว")
         
         display_df = df.copy()
-        # ดึงภาพทั้งสองมาเข้าคอลัมน์แสดงผลพรีวิวบนหน้าตาราง
         if "Entry_Screenshot" in display_df.columns:
             display_df["ภาพตอนเข้า (Entry)"] = display_df["Entry_Screenshot"]
         if "Exit_Screenshot" in display_df.columns:
@@ -145,6 +151,7 @@ with tab2:
                 "Buy/Sell": st.column_config.TextColumn("ฝั่ง"),
                 "LotSize": st.column_config.NumberColumn("Lot"),
                 "Points": st.column_config.NumberColumn("จุด (Pts)"),
+                "Entry_Type": st.column_config.TextColumn("ประเภทการเข้า"), # แสดงในตารางสรุป
                 "Strategy": st.column_config.TextColumn("ระบบเทรด"),
                 "Risk/Reward": st.column_config.TextColumn("R:R"),
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
@@ -205,7 +212,7 @@ with tab3:
     else:
         st.info("ยังไม่มีข้อมูลสำหรับการค้นหา")
 
-# ================= TAB 4: หน้าแสดงกราฟแนวโน้มเงินทุน (เหมือนเดิม) =================
+# ================= TAB 4: หน้าแสดงกราฟแนวโน้มเงินทุน =================
 with tab4:
     st.header("📈 กราฟการเติบโตของพอร์ตลงทุน (Equity Curve)")
     df = load_data()
