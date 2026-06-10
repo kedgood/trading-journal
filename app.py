@@ -31,7 +31,7 @@ def load_data():
         data = sheet.get_all_records()
         if data:
             return pd.DataFrame(data)
-    return pd.DataFrame(columns=["Date", "Pair", "TimeFrame", "Buy/Sell", "LotSize", "Points", "Strategy", "Risk/Reward", "PnL", "Result", "Entry_Screenshot", "Exit_Screenshot", "Entry_Type", "Note"])
+    return pd.DataFrame(columns=["Date", "Pair", "TimeFrame", "Buy/Sell", "LotSize", "Points", "Strategy", "Risk/Reward", "PnL", "Result", "Entry_Type", "Note","Entry_Screenshot", "Exit_Screenshot"])
 
 # --- สร้างแท็บเมนูการใช้งาน 4 แท็บ ---
 tab1, tab2, tab3, tab4 = st.tabs([
