@@ -41,7 +41,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📈 กราฟแนวโน้มเงินทุน (Equity Curve)"
 ])
 
-# ================= TAB 1: กรอกข้อมูล =================
+# ================= TAB 1: กรอกข้อมูลเวอร์ชันสมบูรณ์ (สวยงามและครบถ้วนที่สุด) =================
 with tab1:
     st.header("🗂️ บันทึกรายละเอียดการเข้าเทรด (Trade Entry)")
     
@@ -50,6 +50,7 @@ with tab1:
         with col1:
             trade_date = st.date_input("📅 วันที่เข้าเทรด", datetime.now().date())
             
+            # เลือกคู่เงิน
             pair_selection = st.selectbox("💱 เลือกคู่เงิน / สินทรัพย์", ["XAUUSD", "USDJPY", "GBPUSD", "อื่นๆ (กรอกเองด้านล่าง)"])
             if pair_selection == "อื่นๆ (กรอกเองด้านล่าง)":
                 pair_input = st.text_input("✍️ พิมพ์ชื่อคู่เงินเอง", placeholder="เช่น EURUSD").upper().strip()
@@ -64,6 +65,7 @@ with tab1:
             points_input = st.number_input("🎯 จำนวนจุดที่ ชนะ/แพ้ (Points)", value=0, step=10)
             pnl_input = st.number_input("💵 กำไร / ขาดทุนสุทธิ (PnL $)", value=0.0, step=1.0, format="%.2f")
             
+            # เพิ่มช่องประเภทการเข้า เพื่อความสวยงามและแน่นขึ้นในคอลัมน์ที่ 2
             entry_type_input = st.selectbox("📌 ประเภทการเข้าเทรด (Entry Type)", [
                 "ตามเทรนด์ขาขึ้น (Up-Trend)", 
                 "ตามเทรนด์ขาลง (Down-Trend)", 
@@ -75,6 +77,7 @@ with tab1:
                                           ["Price Action", "Fair Value Gap (FVG)", "Volume Profile (POC/HVN/LVN)", "Break of Structure (BOS)", "Indicator Sign", "อื่นๆ"])
             rr_input = st.selectbox("⚖️ Risk / Reward Ratio", ["1:1", "1:1.5", "1:2", "1:3", "มากกว่า 1:3", "ไม่ได้ตั้ง (No RR)"])
             
+            # ช่องวางลิงก์รูปภาพ Entry และ Exit
             entry_screenshot = st.text_input("📸 ลิงก์รูปภาพตอน 'เข้าออเดอร์' (Entry Link)", placeholder="วางลิงก์รูปกล้อง TradingView")
             exit_screenshot = st.text_input("🏁 ลิงก์รูปภาพตอน 'จบไม้' (Exit Link)", placeholder="วางลิงก์รูปกล้อง TradingView")
             
@@ -90,6 +93,7 @@ with tab1:
                         formatted_date = trade_date.strftime("%Y-%m-%d")
                         result_status = "Win" if pnl_input > 0 else ("Loss" if pnl_input < 0 else "Draft/Breakeven")
                         
+                        # เรียงแถวข้อมูลให้ตรงกับหัวข้อคอลัมน์ Google Sheets ใหม่ทั้งหมด (14 คอลัมน์)
                         new_row = [
                             formatted_date, 
                             pair_input, 
@@ -103,7 +107,7 @@ with tab1:
                             result_status, 
                             entry_screenshot.strip(),
                             exit_screenshot.strip(),
-                            entry_type_input,
+                            entry_type_input, # บันทึกประเภทการเข้าลงชีต
                             note_input.strip()
                         ]
                         sheet.append_row(new_row)
@@ -112,7 +116,7 @@ with tab1:
             else:
                 st.warning("⚠️ กรุณาระบุชื่อคู่เงินก่อนกดบันทึก")
 
-# ================= TAB 2: สมุดบันทึกประวัติและสถิติรวม (แก้ไขเรื่อง Note เรียบร้อย) =================
+# ================= TAB 2: สมุดบันทึกประวัติและสถิติรวม =================
 with tab2:
     st.header("📊 หน้าสรุปผลงานและการวิเคราะห์ (Dashboard Analytics)")
     df = load_data()
@@ -133,14 +137,11 @@ with tab2:
         st.markdown("### 📜 ประวัติออเดอร์และการแสดงรูปภาพพรีวิว")
         
         display_df = df.copy()
-        
-        # ปรับชื่อตัวแปรคอลัมน์ให้ตรงกับที่ดึงมา ป้องกันชื่อพิมพ์ผิดตัวเล็ก-ใหญ่ทำให้คอลัมน์หาย
         if "Entry_Screenshot" in display_df.columns:
             display_df["ภาพตอนเข้า (Entry)"] = display_df["Entry_Screenshot"]
         if "Exit_Screenshot" in display_df.columns:
             display_df["ภาพตอนจบ (Exit)"] = display_df["Exit_Screenshot"]
             
-        # เคลื่อนย้ายตำแหน่งคอลัมน์ บังคับให้ Note แสดงชัดเจน
         st.data_editor(
             display_df,
             column_config={
@@ -150,16 +151,16 @@ with tab2:
                 "Buy/Sell": st.column_config.TextColumn("ฝั่ง"),
                 "LotSize": st.column_config.NumberColumn("Lot"),
                 "Points": st.column_config.NumberColumn("จุด (Pts)"),
-                "Entry_Type": st.column_config.TextColumn("ประเภทการเข้า"),
+                "Entry_Type": st.column_config.TextColumn("ประเภทการเข้า"), # แสดงในตารางสรุป
                 "Strategy": st.column_config.TextColumn("ระบบเทรด"),
                 "Risk/Reward": st.column_config.TextColumn("R:R"),
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
                 "Result": st.column_config.TextColumn("ผลลัพธ์"),
-                "Note": st.column_config.TextColumn("📝 บันทึกเพิ่มเติม"), # บังคับแสดงช่องนี้แน่นอน
-                "Entry_Screenshot": None,  # ซ่อนบรรทัดลิงก์ตัวหนังสือตามคำขอ
-                "Exit_Screenshot": None,   # ซ่อนบรรทัดลิงก์ตัวหนังสือตามคำขอ
+                "Entry_Screenshot": st.column_config.LinkColumn("ลิงก์รูปเข้า"),
+                "Exit_Screenshot": st.column_config.LinkColumn("ลิงก์รูปจบ"),
                 "ภาพตอนเข้า (Entry)": st.column_config.ImageColumn("📸 ภาพตอนเข้า"),
-                "ภาพตอนจบ (Exit)": st.column_config.ImageColumn("🏁 ภาพตอนจบ")
+                "ภาพตอนจบ (Exit)": st.column_config.ImageColumn("🏁 ภาพตอนจบ"),
+                "Note": st.column_config.TextColumn("บันทึกเพิ่มเติม")
             },
             use_container_width=True,
             disabled=True
@@ -167,7 +168,7 @@ with tab2:
     else:
         st.info("ยังไม่มีข้อมูลการเทรดในระบบตาราง")
 
-# ================= TAB 3: ค้นหาและคัดกรองข้อมูลประวัติ (แก้ไขเรื่อง Note เรียบร้อย) =================
+# ================= TAB 3: ค้นหาและคัดกรองข้อมูลประวัติ =================
 with tab3:
     st.header("🔍 ค้นหาและกรองสถิติรายเทคนิค")
     df = load_data()
@@ -201,20 +202,7 @@ with tab3:
         st.data_editor(
             filtered_df,
             column_config={
-                "Date": st.column_config.TextColumn("วันที่"),
-                "Pair": st.column_config.TextColumn("สินทรัพย์"),
-                "TimeFrame": st.column_config.TextColumn("TF"),
-                "Buy/Sell": st.column_config.TextColumn("ฝั่ง"),
-                "LotSize": st.column_config.NumberColumn("Lot"),
-                "Points": st.column_config.NumberColumn("จุด (Pts)"),
-                "Entry_Type": st.column_config.TextColumn("ประเภทการเข้า"),
-                "Strategy": st.column_config.TextColumn("ระบบเทรด"),
-                "Risk/Reward": st.column_config.TextColumn("R:R"),
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
-                "Result": st.column_config.TextColumn("ผลลัพธ์"),
-                "Note": st.column_config.TextColumn("📝 บันทึกเพิ่มเติม"), # บังคับแสดงช่องนี้ในหน้าค้นหาด้วย
-                "Entry_Screenshot": None,  # ซ่อนบรรทัดลิงก์ตัวหนังสือในหน้าค้นหา
-                "Exit_Screenshot": None,   # ซ่อนบรรทัดลิงก์ตัวหนังสือในหน้าค้นหา
                 "ภาพตอนเข้า (Entry)": st.column_config.ImageColumn("📸 ภาพตอนเข้า"),
                 "ภาพตอนจบ (Exit)": st.column_config.ImageColumn("🏁 ภาพตอนจบ")
             },
