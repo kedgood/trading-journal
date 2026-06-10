@@ -124,7 +124,6 @@ with tab2:
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
                 "Result": st.column_config.TextColumn("ผลลัพธ์"),
                 "Note": st.column_config.TextColumn("บันทึกเพิ่มเติม"),
-                "Screenshot": st.column_config.LinkColumn("ลิงก์รูปภาพ"),
                 "ภาพกราฟ (Preview)": st.column_config.ImageColumn("ภาพพรีวิวกราฟ")
             },
             use_container_width=True,
@@ -166,7 +165,6 @@ with tab3:
             filtered_df,
             column_config={
                 "PnL": st.column_config.NumberColumn("กำไร/ขาดทุน ($)", format="$%.2f"),
-                "Screenshot": st.column_config.LinkColumn("ลิงก์รูปภาพ"),
                 "ภาพกราฟ (Preview)": st.column_config.ImageColumn("ภาพพรีวิวกราฟ")
             },
             use_container_width=True,
