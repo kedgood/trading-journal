@@ -45,7 +45,7 @@ with tab1:
         pair_input = st.text_input("💱 คู่เงิน / สินทรัพย์", placeholder="เช่น XAUUSD, EURUSD")
         pnl_input = st.number_input("💵 กำไร / ขาดทุน (PnL)", value=0.0, step=0.01, format="%.2f")
     
-    screenshot_input = st.text_input("🖼️ ลิงก์รูปภาพบันทึกกราฟ (Screenshot URL)", placeholder="วางลิงก์รูปภาพ (ถ้ามี)")
+    screenshot_input = st.text_input("🖼️ ลิงก์รูปภาพบันทึกกราฟ (Screenshot URL)", placeholder="วางลิงก์รูปภาพ (เช่น ลิงก์รูปกล้องจาก TradingView)")
     
     if st.button("บันทึกข้อมูล (Save)", use_container_width=True):
         if pair_input:
@@ -60,12 +60,13 @@ with tab1:
         else:
             st.warning("⚠️ กรุณากรอกชื่อคู่เงินก่อนกดปุ่มบันทึก")
 
-# ================= TAB 2: แสดงข้อมูลทั้งหมด =================
+# ================= TAB 2: แสดงข้อมูลทั้งหมดพร้อมรูปภาพ =================
 with tab2:
     st.header("ประวัติการเทรดในสมุดบันทึก")
     df = load_data()
     
     if not df.empty:
+        # คำนวณสถิติภาพรวม
         total_trades = len(df)
         total_pnl = df["PnL"].astype(float).sum()
         
@@ -74,7 +75,24 @@ with tab2:
         c2.metric("กำไร/ขาดทุนสุทธิ", f"${total_pnl:,.2f}", delta=f"{total_pnl:,.2f}")
         
         st.markdown("### ตารางบันทึกข้อมูล")
-        st.dataframe(df, use_container_width=True)
+        
+        # คัดลอกตารางเพื่อนำมาปรับแต่งการแสดงผลรูปภาพ
+        display_df = df.copy()
+        
+        # เพิ่มคอลัมน์ดึงรูปภาพมาแสดง (Preview) รองรับลิงก์ภาพทั่วไปและ TradingView
+        if "Screenshot" in display_df.columns:
+            display_df["ภาพกราฟ (Preview)"] = display_df["Screenshot"]
+        
+        # แสดงผลตารางแบบดึงรูปภาพขึ้นมาโชว์ทันที
+        st.data_editor(
+            display_df,
+            column_config={
+                "Screenshot": st.column_config.LinkColumn("ลิงก์รูปภาพต้นฉบับ"), # แสดงเป็นลิงก์ให้กดคลิกได้ง่ายๆ
+                "ภาพกราฟ (Preview)": st.column_config.ImageColumn("ภาพกราฟ (Preview)", help="รูปภาพกราฟแผนภูมิที่บันทึกไว้") # สั่งให้แสดงเป็นรูปภาพในตารางเลย
+            },
+            use_container_width=True,
+            disabled=True # ล็อกตารางไว้ดูอย่างเดียว ไม่ให้เผลอกดแก้ไขข้อมูล
+        )
     else:
         st.info("ยังไม่มีประวัติการเทรดในระบบตารางของคุณ")
 
@@ -98,6 +116,19 @@ with tab3:
             filtered_df = filtered_df[filtered_df["Buy/Sell"] == select_side]
             
         st.markdown(f"🔍 ค้นพบข้อมูลทั้งหมด **{len(filtered_df)}** รายการ")
-        st.dataframe(filtered_df, use_container_width=True)
+        
+        # ค้นหาแล้วโชว์รูปภาพในแท็บค้นหาด้วยเช่นกัน
+        if "Screenshot" in filtered_df.columns:
+            filtered_df["ภาพกราฟ (Preview)"] = filtered_df["Screenshot"]
+            
+        st.data_editor(
+            filtered_df,
+            column_config={
+                "Screenshot": st.column_config.LinkColumn("ลิงก์รูปภาพต้นฉบับ"),
+                "ภาพกราฟ (Preview)": st.column_config.ImageColumn("ภาพกราฟ (Preview)")
+            },
+            use_container_width=True,
+            disabled=True
+        )
     else:
         st.info("ยังไม่มีข้อมูลในสมุดบันทึกสำหรับการค้นหา")
