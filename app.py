@@ -159,6 +159,8 @@ with tab2:
                 "ภาพตอนเข้า (Entry)": st.column_config.ImageColumn("📸 ภาพตอนเข้า"),
                 "ภาพตอนจบ (Exit)": st.column_config.ImageColumn("🏁 ภาพตอนจบ"),
                 "Note": st.column_config.TextColumn("บันทึกเพิ่มเติม")
+                "Entry_Screenshot": st.column_config.LinkColumn("ลิงก์รูปเข้า"),
+                "Exit_Screenshot": st.column_config.LinkColumn("ลิงก์รูปจบ"),
             },
             use_container_width=True,
             disabled=True
